@@ -3,7 +3,12 @@ const express = require("express");
 const logger = require("./utilities/logger");
 const app = express();
 const port = process.env.PORT || 5000;
+const user = require('./User/routes/user')
 require("./utilities/db")();
+
+
+app.use(express.json());
+app.use('/register', user )
 
 const server = app.listen(port, () =>
   logger.info(

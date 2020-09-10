@@ -1,20 +1,15 @@
-const mongoose = require('mongoose');
-const { validateUser, User } = require('../../models/user');
+const express = require('express');
+const { register } = require('../policy');
+const validate = require('../../middleware/validate');
+const router = express.Router();
+const { User } = require('../../models/user');
+const { Account } = require('../../models/account');
 const _ = require('lodash');
 const bycrypt = require('bcrypt');
-const { Account } = require('../../models/account');
+const {sendJSONResponse} = require('../controller/index')
 
-const sendJSONResponse = (res, status, message, data) => {
-    res.status(status);
-    res.json({
-        message,
-        data,
-    })
-};
 
-const catchErrors = (fn) => (req, res, next) => fn(req, res, next).catch(next);
-
-const registerUser = async (req, res) => {
+router.post('/register', validate(register), async (req, res) => {
     const user = new User();
     const account = new Account();
   
@@ -30,16 +25,17 @@ const registerUser = async (req, res) => {
   
     user.name = name;
     user.email = email;
+    user.password = password
 
     const salt = await bycrypt.genSalt(10);
-    user.password = await bycrypt.hash(user.password, salt)
+    password = await bycrypt.hash(user.password, salt)
     await user.save();
 
     const accountNumber = Math.floor(1000000000 + Math.random() * 9000000000);
 
     account.number = accountNumber;
     account.owner = user._id;
-    account.type = accountType
+    account.type = accountType;
 
     await account.save()
 
@@ -50,9 +46,7 @@ const registerUser = async (req, res) => {
        account: _pick(account, ['number', 'type', 'balance'])
     }
     return sendJSONResponse(res, 200, 'User was successfully created', data);
-}
+})
 
-module.exports = {
-    registerUser,
-    sendJSONResponse,
-}
+
+module.exports = router
