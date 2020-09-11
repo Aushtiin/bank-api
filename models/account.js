@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const Joi = require("@hapi/joi");
 const User = require('./user')
 
-const accountSchema = new mongoose.Schema(
+const AccountSchema = new mongoose.Schema(
   {
     number: {
       type: Number,
@@ -26,7 +26,6 @@ const accountSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const Account = mongoose.model('Account', accountSchema);
 
 function validateAccount(account) {
   const schema = Joi.object({
@@ -36,6 +35,9 @@ function validateAccount(account) {
   })
   return schema.validate(account)
 }
+
+
+const Account = mongoose.model('Account', AccountSchema);
 
 
 module.exports = {

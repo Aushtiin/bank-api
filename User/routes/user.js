@@ -1,52 +1,56 @@
-const express = require('express');
-const { register } = require('../policy');
-const validate = require('../../middleware/validate');
+const express = require("express");
+const { register, login } = require("../policy");
+const validate = require("../../middleware/validate");
 const router = express.Router();
-const { User } = require('../../models/user');
-const { Account } = require('../../models/account');
-const _ = require('lodash');
-const bycrypt = require('bcrypt');
-const {sendJSONResponse} = require('../controller/index')
+const { User } = require("../../models/user");
+const { Account } = require("../../models/account");
+const _ = require("lodash");
+const { catchErrors } = require("../controller");
 
+router.post("/register", validate(register), catchErrors(async (req, res) => {
+  let user = await User.findOne({ email: req.body.email });
+  if (user) return res.status(400).send("User already exits");
 
-router.post('/register', validate(register), async (req, res) => {
-    const user = new User();
-    const account = new Account();
-  
-    const {
-      name, email, password, accountType,
-    } = req.body;
-  
-    const existingUser = await User.findOne({ email });
-  
-    if (existingUser) {
-      return sendJSONResponse (res, 400, 'User already exists', null);
-    }
-  
-    user.name = name;
-    user.email = email;
-    user.password = password
+  user = new User(_.pick(req.body, ["name", "email", "password"]));
+  user.setPassword(req.body.password);
+  await user.save();
 
-    const salt = await bycrypt.genSalt(10);
-    password = await bycrypt.hash(user.password, salt)
-    await user.save();
+  const accountNumber = Math.floor(1000000000 + Math.random() * 9000000000);
 
-    const accountNumber = Math.floor(1000000000 + Math.random() * 9000000000);
+  const account = new Account({
+    number: accountNumber,
+    type: req.body.accountType,
+    owner: user._id,
+  });
+  await account.save();
 
-    account.number = accountNumber;
-    account.owner = user._id;
-    account.type = accountType;
+  const token = user.generateAuthToken();
 
-    await account.save()
+  const data = {
+    token,
+    user: _.pick(req.body, ["name", "email"]),
+    account: _.pick(account, ["number", "type", "balance", "owner"]),
+  };
+  return res.status(200).send(data);
+}));
 
-    const token = user.generateAuthToken();
+router.post("/login", validate(login), catchErrors(async (req, res) => {
+  const user = await User.findOne({ email: req.body.email });
+  if (!user) return res.status(400).send("Invalid login Credentials");
 
-    const data = {
-       user: _.pick(user, ['name', 'email', 'type']),
-       account: _pick(account, ['number', 'type', 'balance'])
-    }
-    return sendJSONResponse(res, 200, 'User was successfully created', data);
-})
+  const validPassword = user.verifyPassword(req.body.password);
+  if (!validPassword) return res.send(400).send("Invalid login Credentials");
 
+  const account = await Account.findOne({ owner: user._id });
+  const token = user.generateAuthToken();
 
-module.exports = router
+  const data = {
+    token,
+    user: _.pick(user, ["name", "email"]),
+    account: _.pick(account, ["number", "type", "balance"]),
+  };
+
+  res.send(data);
+}));
+
+module.exports = router;

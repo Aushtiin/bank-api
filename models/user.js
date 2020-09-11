@@ -1,12 +1,14 @@
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
+const { randomBytes, pbkdf2Sync } = require('crypto');
 
-const userSchema = new mongoose.Schema({
+
+const UserSchema = new mongoose.Schema({
   name: {
     type: String,
     lowercase: true,
     trim: true,
-    required: "Please provide your name",
+    required: true,
     minlength: 3,
     maxlength: 200,
   },
@@ -21,20 +23,28 @@ const userSchema = new mongoose.Schema({
     default: false,
   },
 
-  password: {
-    type: String,
-    minlength: 8,
-    maxlength: 200,
-    required: true
-  }
+  hash : String, 
+
+  salt : String 
 });
 
-const User = new mongoose.model("User", userSchema);
 
-userSchema.methods.generateAuthToken = function () {
+UserSchema.methods.generateAuthToken = function () {
   const token = jwt.sign({_id: this._id, blocked: this.blocked}, process.env.JWTKEY);
   return token;
 };
+
+UserSchema.methods.setPassword = function userPassword(password) {
+  this.salt = randomBytes(16).toString('hex');
+  this.hash = pbkdf2Sync(password, this.salt, 100, 64, 'sha512').toString('hex');
+};
+
+UserSchema.methods.verifyPassword = function verify(password) {
+  const hash = pbkdf2Sync(password, this.salt, 100, 64, 'sha512').toString('hex');
+  return this.hash === hash;
+};
+
+const User = mongoose.model("User", UserSchema);
 
 
 module.exports = {

@@ -8,7 +8,7 @@ require("./utilities/db")();
 
 
 app.use(express.json());
-app.use('/register', user )
+app.use('/api/users', user )
 
 const server = app.listen(port, () =>
   logger.info(
