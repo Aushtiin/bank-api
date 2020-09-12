@@ -24,7 +24,7 @@ router.post("/register", validate(register), catchErrors(async (req, res) => {
   });
   await account.save();
 
-  const token = user.generateAuthToken();
+  const token = user.generateAuthToken(accountNumber);
 
   const data = {
     token,
@@ -42,7 +42,7 @@ router.post("/login", validate(login), catchErrors(async (req, res) => {
   if (!validPassword) return res.send(400).send("Invalid login Credentials");
 
   const account = await Account.findOne({ owner: user._id });
-  const token = user.generateAuthToken();
+  const token = user.generateAuthToken(account.number);
 
   const data = {
     token,
